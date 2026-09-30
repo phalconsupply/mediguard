@@ -1,0 +1,50 @@
+# ==========================================================================
+#  DỮ LIỆU NGƯỜI BỆNH — TUYỆT ĐỐI KHÔNG ĐƯA LÊN KHO MÃ NGUỒN
+# ==========================================================================
+# Thư mục khảo sát chứa hồ sơ thật: họ tên, số thẻ BHYT, CCCD, chẩn đoán.
+# Giữ ở máy hoặc trên kho tệp riêng của bệnh viện, không bao giờ commit.
+/Document/
+/document/
+*.xlsx
+*.xls
+*.csv
+Data_gui-Giam_dinh.xml
+!/tests/Fixtures/*.xml
+
+# Tệp do người dùng nạp và tệp kết quả sinh ra khi chạy.
+/storage/app/mediguard/
+/storage/app/private/
+/storage/app/public/
+/storage/app/tmp/
+
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml
+Thumbs.db
+
+# Cơ sở dữ liệu SQLite chỉ dùng cho thử nghiệm tại máy.
+/database/*.sqlite
+/database/*.sqlite-journal

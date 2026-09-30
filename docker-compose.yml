@@ -1,0 +1,84 @@
+# Triển khai một VPS: web, app, worker, DB.
+#
+# Worker chạy tách khỏi PHP-FPM để việc nạp và xuất tệp lớn không làm chậm
+# màn hình giải trình. Phiên bản image được khóa, worker tự khởi động lại,
+# dữ liệu nằm trên volume bền vững.
+#
+# Trước khi chạy: sao chép .env.example thành .env và đặt mật khẩu thật.
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-mediguard}
+      MYSQL_USER: ${DB_USERNAME:-mediguard}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Đặt DB_PASSWORD trong .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Đặt DB_ROOT_PASSWORD trong .env}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # Bật binary log để khôi phục theo thời điểm từ bản sao lưu.
+      - --log-bin=mysql-bin
+      - --binlog-expire-logs-seconds=604800
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Không mở cổng ra ngoài; chỉ các dịch vụ trong mạng nội bộ truy cập.
+    expose:
+      - '3306'
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Kho tệp nguồn, tệp kết quả và minh chứng: dữ liệu bệnh nhân, phải bền vững.
+      - storage-data:/var/www/html/storage/app
+    expose:
+      - '9000'
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/var/www/html/public:ro
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - storage-data:/var/www/html/storage/app
+    # --max-time để worker tự làm mới sau mỗi giờ; --tries=1 vì job nạp/xuất
+    # có checkpoint riêng và không nên chạy lại mù.
+    command: >
+      php artisan queue:work
+      --queue=default
+      --tries=1
+      --timeout=3600
+      --max-time=3600
+      --sleep=3
+
+volumes:
+  db-data:
+  storage-data:
